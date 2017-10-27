@@ -1,10 +1,12 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes, FlexibleContexts, CPP #-}
 
 import Text.Pandoc.Arbitrary ()
-import Text.Pandoc.Definition
+import Text.Pandoc.Definition hiding (Pandoc, Meta, MetaValue, Inline, Block, Citation)
+import Text.Pandoc.Definition (Citation'(..))
 import Text.Pandoc.Walk
 import Data.Generics
 import Data.List (tails)
+import Data.String.Conversions
 import Test.HUnit (Assertion, assertEqual, assertFailure)
 import Data.Char (toUpper)
 import Data.Aeson (FromJSON, ToJSON, encode, decode)
@@ -19,6 +21,16 @@ import Data.ByteString.Lazy (ByteString)
 import Data.Monoid
 #endif
 import qualified Data.Monoid as Monoid
+
+
+type TestStringType = String
+
+-- redefining these so we can easily replace 'String' with another type just for testing.
+type Pandoc = Pandoc' TestStringType
+type MetaValue = MetaValue' TestStringType
+type Inline = Inline' TestStringType
+type Block = Block' TestStringType
+type Citation = Citation' TestStringType
 
 
 p_walk :: (Typeable a, Walkable a Pandoc)
@@ -40,7 +52,7 @@ p_queryList f d = everything mappend (mempty `mkQ` f) d ==
                   query (mconcat . map f . tails) d
 
 inlineTrans :: Inline -> Inline
-inlineTrans (Str xs) = Str $ map toUpper xs
+inlineTrans (Str xs) = Str . cs $ map toUpper (cs xs :: String)
 inlineTrans (Emph xs) = Strong xs
 inlineTrans x = x
 
@@ -66,7 +78,7 @@ blocksTrans [Div _ xs] = xs
 blocksTrans xs = xs
 
 inlineQuery :: Inline -> String
-inlineQuery (Str xs) = xs
+inlineQuery (Str xs) = cs xs
 inlineQuery _ = ""
 
 inlinesQuery :: [Inline] -> Monoid.Sum Int
